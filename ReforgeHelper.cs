@@ -721,6 +721,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 "Amulet" => _settings.ItemCategories.EnableAmulets,
                 "Waystone" => _settings.ItemCategories.EnableWaystones,
                 "Relic" => _settings.ItemCategories.EnableRelics,
+                "Tablet" => _settings.ItemCategories.EnableTablets,
                 _ => false
             };
 

@@ -42,6 +42,7 @@ namespace ReforgeHelper
         public ToggleNode EnableAmulets { get; set; } = new ToggleNode(true);
         public ToggleNode EnableWaystones { get; set; } = new ToggleNode(true);
         public ToggleNode EnableRelics { get; set; } = new ToggleNode(true);
+        public ToggleNode EnableTablets { get; set; } = new ToggleNode(true);
     }
 
     [Submenu]

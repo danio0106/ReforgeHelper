@@ -56,6 +56,14 @@ namespace ReforgeHelper
             {
                 "Urn Relic", "Amphora Relic", "Vase Relic", "Seal Relic",
                 "Coffer Relic", "Tapestry Relic", "Incense Relic"
+            },
+
+            // Tablets
+            ["Tablet"] = new List<string>
+            {
+                "Breach Precursor Tablet", "Expedition Precursor Tablet",
+                "Delirium Precursor Tablet", "Ritual Precursor Tablet",
+                "Precursor Tablet", "Overseer Precursor Tablet"
             }
         };
 
