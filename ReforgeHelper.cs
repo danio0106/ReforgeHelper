@@ -37,22 +37,23 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
     public override bool Initialise()
     {
-        DebugWindow.LogMsg("[ReforgeHelper] Starting initialization...");
+        RFLogger.Info("Starting initialization...");
         try
         {
             if (GameController == null || Settings == null)
             {
-                DebugWindow.LogError("[ReforgeHelper] GameController or Settings is null!");
+                RFLogger.Error("GameController or Settings is null!");
                 return false;
             }
 
             _tripletManager = new TripletManager(GameController, Settings);
-            DebugWindow.LogMsg("[ReforgeHelper] Successfully initialized");
+            RFLogger.Info("Successfully initialized");
+            RFLogger.Initialize(Settings);
             return true;
         }
         catch (Exception ex)
         {
-            DebugWindow.LogError($"[ReforgeHelper] Initialization failed: {ex.Message}");
+            RFLogger.Error($"Initialization failed: {ex.Message}");
             return false;
         }
     }
@@ -255,10 +256,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
     private void LogDebug(string message)
     {
-        if (Settings.EnableDebug)
-        {
-            DebugWindow.LogMsg($"[ReforgeHelper] {message}");
-        }
+        RFLogger.Debug(message);
     }
 
     private Element GetReforgeButton()
@@ -466,38 +464,48 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         LogDebug("Processing stopped");
     }
 
+    private bool IsInSafeZone()
+    {
+        var area = GameController.Area.CurrentArea;
+        return area?.IsHideout == true || area?.IsTown == true;
+    }
+
     public override void Tick()
     {
-        DebugWindow.LogMsg("TICK TEST - does this appear at all?");
         try
         {
-            if (!Settings.Enable)
-            {
-                DebugWindow.LogMsg("[ReforgeHelper] Plugin is disabled in settings");
-                return;
-            }
-            if (!GameController.Window.IsForeground()) return;
+            if (!Settings.Enable || !GameController.Window.IsForeground()) return;
             if (_tripletManager == null) return;
 
-            CheckReforgeBench();
+            // Only process in safe zones
+            if (!IsInSafeZone())
+            {
+                _lastFoundBench = null;
+                return;
+            }
 
+            // Only check bench when UI is open
+            if (IsReforgeBenchUiOpen())
+            {
+                if (_lastFoundBench == null)
+                {
+                    CheckReforgeBench();
+                }
+            }
+            else
+            {
+                _lastFoundBench = null;
+            }
+
+            // Process hotkeys
             if (Settings.StartReforgeKey.PressedOnce())
             {
-                DebugWindow.LogMsg("[ReforgeHelper] Reforge hotkey pressed");
                 if (!_isProcessing)
                 {
-                    if (_lastFoundBench == null)
+                    if (_lastFoundBench?.IsVisible == true)
                     {
-                        DebugWindow.LogMsg("[ReforgeHelper] No reforge bench found");
-                        return;
+                        StartProcessing();
                     }
-                    if (!_lastFoundBench.IsVisible)
-                    {
-                        DebugWindow.LogMsg("[ReforgeHelper] Reforge bench is not visible");
-                        return;
-                    }
-                    DebugWindow.LogMsg("[ReforgeHelper] Starting processing with valid bench");
-                    StartProcessing();
                 }
                 else
                 {
@@ -512,7 +520,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         }
         catch (Exception ex)
         {
-            LogDebug($"Tick error: {ex.Message}");
+            RFLogger.Error($"Tick error: {ex.Message}");
         }
     }
 
@@ -582,7 +590,29 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             return ItemSubtypes.GetBaseCategory(itemName);
         }
     }
+    private bool IsReforgeBenchUiOpen()
+        {
+            try
+            {
+                var ingameUi = GameController?.Game?.IngameState?.IngameUi;
+                if (ingameUi == null) return false;
 
+                // Loop through visible panels to find reforge UI
+                foreach (var panel in ingameUi.Children)
+                {
+                    if (panel?.IsVisible == true &&
+                        panel.PathFromRoot?.Contains("ReforgingBench") == true)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                RFLogger.Error($"Error checking reforge UI: {ex.Message}");
+            }
+            return false;
+        }
     public class TripletManager
     {
         private readonly TimeCache<List<TripletData>> _inventoryItems;
@@ -603,12 +633,12 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
             if (inventory?.InventorySlotItems == null)
             {
-                DebugWindow.LogMsg("Inventory or InventorySlotItems is null.");
+                RFLogger.Debug("Inventory or InventorySlotItems is null.");
                 return items;
             }
 
             var itemCount = inventory.InventorySlotItems.Count;
-            DebugWindow.LogMsg($"Scanning inventory - Found {itemCount} total items");
+            RFLogger.Debug($"Scanning inventory - Found {itemCount} total items");
 
             foreach (var item in inventory.InventorySlotItems)
             {
@@ -617,7 +647,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 var baseComp = item.Item.GetComponent<Base>();
                 var modsComp = item.Item.GetComponent<Mods>();
 
-                DebugWindow.LogMsg(
+                RFLogger.Debug(
                     $"Item: {baseComp?.Name} | Level: {modsComp?.ItemLevel} | Rarity: {modsComp?.ItemRarity}"
                 );
 
@@ -655,11 +685,18 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             return null;
         }
 
+
         private bool IsValidForReforge(TripletData item)
         {
+            // Add check for unidentified items
+            var modsComponent = item.Entity.GetComponent<Mods>();
+            if (modsComponent?.Identified == false)
+            {
+                RFLogger.Debug($"Item {item.BaseName} is unidentified - skipping");
+                return false;
+            }
             // Ensure item has necessary components
             var baseComponent = item.Entity.GetComponent<Base>();
-            var modsComponent = item.Entity.GetComponent<Mods>();
             if (baseComponent == null || modsComponent == null)
             {
                 DebugWindow.LogMsg($"Item {item.BaseName} missing required components - skipping");
@@ -715,7 +752,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 .Where(IsValidForReforge) // Filter items before grouping
                 .ToList();
 
-            DebugWindow.LogMsg($"Forming triplets from {items.Count} valid items");
+            RFLogger.Debug($"Forming triplets from {items.Count} valid items");
 
             var itemsByBaseType = items
                 .GroupBy(x => new { x.BaseType, x.Rarity })
@@ -723,7 +760,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
             foreach (var group in itemsByBaseType)
             {
-                DebugWindow.LogMsg($"Processing group: {group.Key.BaseType} (Rarity: {group.Key.Rarity}) with {group.Count()} items");
+                RFLogger.Debug($"Processing group: {group.Key.BaseType} (Rarity: {group.Key.Rarity}) with {group.Count()} items");
                 var sortedItems = group.OrderBy(x => x.ItemLevel).ToList();
 
                 while (sortedItems.Count >= 3)
@@ -734,7 +771,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 }
             }
 
-            DebugWindow.LogMsg($"Formed {triplets.Count} triplets");
+            RFLogger.Debug($"Formed {triplets.Count} triplets");
             return triplets;
         }
     }
