@@ -1,10 +1,8 @@
 # ReforgeHelper Plugin for Path of Exile 2
 
-An advanced automation plugin for the reforging bench mechanic in Path of Exile 2, featuring smart item grouping and human-like interactions.
-
 ## Core Features
 
-- Smart Triplet Formation
+-  Triplet Formation
   - Groups compatible items based on base type, rarity, and item level
   - Configurable item level disparity threshold
   - Automatic rarity validation per item type
