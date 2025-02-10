@@ -49,6 +49,13 @@ namespace ReforgeHelper
                 "Waystone (Tier 5)", "Waystone (Tier 6)", "Waystone (Tier 7)", "Waystone (Tier 8)",
                 "Waystone (Tier 9)", "Waystone (Tier 10)", "Waystone (Tier 11)", "Waystone (Tier 12)",
                 "Waystone (Tier 13)", "Waystone (Tier 14)"
+            },
+
+            // Relics
+            ["Relic"] = new List<string>
+            {
+                "Urn Relic", "Amphora Relic", "Vase Relic", "Seal Relic",
+                "Coffer Relic", "Tapestry Relic", "Incense Relic"
             }
         };
 

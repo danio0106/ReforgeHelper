@@ -170,20 +170,20 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                     if (_itemSlots[i] != null)
                     {
                         var rect = _itemSlots[i].GetClientRect();
-                        DebugWindow.LogMsg($"[ReforgeHelper] Item slot {i} found at position: {rect.Center.X}, {rect.Center.Y}");
+                        RFLogger.Debug($"Item slot {i} found at position: {rect.Center.X}, {rect.Center.Y}");
                     }
                 }
 
                 if (_reforgeButton != null)
                 {
                     var rect = _reforgeButton.GetClientRect();
-                    DebugWindow.LogMsg($"[ReforgeHelper] Reforge button found at: {rect.Center.X}, {rect.Center.Y}");
+                    RFLogger.Debug($"Reforge button found at: {rect.Center.X}, {rect.Center.Y}");
                 }
             }
         }
         catch (Exception ex)
         {
-            DebugWindow.LogMsg($"[ReforgeHelper] Error updating bench elements: {ex.Message}");
+            RFLogger.Error($"Error updating bench elements: {ex.Message}");
         }
     }
 
@@ -208,7 +208,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             var bench = FindReforgeBenchElement();
             if (bench != null)
             {
-                DebugWindow.LogMsg($"[ReforgeHelper] Found bench with path: {bench.PathFromRoot}");
+                RFLogger.Debug($"Found bench with path: {bench.PathFromRoot}");
                 if (bench != _lastFoundBench)
                 {
                     _lastFoundBench = bench;
@@ -237,11 +237,11 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
     {
         try
         {
-            DebugWindow.LogMsg("[ReforgeHelper] Searching for reforge bench...");
+            RFLogger.Debug("Searching for reforge bench...");
             var ingameUi = GameController?.Game?.IngameState?.IngameUi;
             if (ingameUi == null)
             {
-                DebugWindow.LogMsg("[ReforgeHelper] IngameUi is null");
+                RFLogger.Debug("IngameUi is null");
                 return null;
             }
 
@@ -249,7 +249,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         }
         catch (Exception ex)
         {
-            DebugWindow.LogMsg($"[ReforgeHelper] Error finding reforge bench: {ex.Message}");
+            RFLogger.Error($"Error finding reforge bench: {ex.Message}");
             return null;
         }
     }
@@ -396,17 +396,17 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             if (resultSlot?.IsVisible == true)
             {
                 var rect = resultSlot.GetClientRect();
-                DebugWindow.LogMsg($"[ReforgeHelper] Found result item at: {rect.Center.X}, {rect.Center.Y}");
+                RFLogger.Debug($"Found result item at: {rect.Center.X}, {rect.Center.Y}");
                 return rect;
             }
             else
             {
-                DebugWindow.LogMsg("[ReforgeHelper] Result item slot not found or not visible");
+                RFLogger.Debug("Result item slot not found or not visible");
             }
         }
         catch (Exception ex)
         {
-            DebugWindow.LogMsg($"[ReforgeHelper] Error getting result item rect: {ex.Message}");
+            RFLogger.Error($"Error getting result item rect: {ex.Message}");
         }
         return null;
     }
@@ -425,20 +425,20 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             await Task.Delay(50, cancellationToken); // Ensure the action is registered
             Input.KeyUp(Keys.ControlKey);
 
-            DebugWindow.LogMsg("[ReforgeHelper] Result item moved to the next open inventory slot");
+            RFLogger.Debug("Result item moved to the next open inventory slot");
         }
         else
         {
-            DebugWindow.LogMsg("[ReforgeHelper] No result item found to move");
+            RFLogger.Debug("No result item found to move");
         }
     }
 
     private void StartProcessing()
     {
-        DebugWindow.LogMsg("[ReforgeHelper] Attempting to start processing...");
+        RFLogger.Debug("Attempting to start processing...");
         if (_isProcessing)
         {
-            DebugWindow.LogMsg("[ReforgeHelper] Already processing, skipping");
+            RFLogger.Debug("Already processing, skipping");
             return;
         }
 
@@ -720,6 +720,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 "Ring" => _settings.ItemCategories.EnableRings,
                 "Amulet" => _settings.ItemCategories.EnableAmulets,
                 "Waystone" => _settings.ItemCategories.EnableWaystones,
+                "Relic" => _settings.ItemCategories.EnableRelics,
                 _ => false
             };
 

@@ -33,7 +33,7 @@ namespace ReforgeHelper.Helper
 
         public static Element FindReforgeBench(Element root)
         {
-            DebugWindow.LogMsg("[ReforgeBenchHelper] Attempting to find reforge bench in UI elements");
+            RFLogger.Debug("Attempting to find reforge bench in UI elements");
             
             // First check root level children (more likely to find it here)
             foreach (var child in root.Children ?? Enumerable.Empty<Element>())
@@ -55,7 +55,7 @@ namespace ReforgeHelper.Helper
                 }
             }
 
-            DebugWindow.LogMsg("[ReforgeBenchHelper] No reforge bench found in UI");
+            RFLogger.Debug("No reforge bench found in UI");
             return null;
         }
 
@@ -65,7 +65,7 @@ namespace ReforgeHelper.Helper
 
             if (element.IsVisible && IsReforgeBench(element))
             {
-                DebugWindow.LogMsg($"[ReforgeBenchHelper] Found reforge bench: {element.PathFromRoot}");
+                RFLogger.Debug($"Found reforge bench: {element.PathFromRoot}");
                 return element;
             }
 
