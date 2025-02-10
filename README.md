@@ -24,11 +24,6 @@ An advanced automation plugin for the reforging bench mechanic in Path of Exile 
   - Waystones
   - Supports both normal and magic/rare items
 
-## Installation
-
-1. Clone the repository to your POE2 plugins directory
-2. Build the solution using Visual Studio or your preferred .NET IDE
-3. Enable the plugin through ExileCore2's plugin manager
 
 ## Usage
 
@@ -40,11 +35,6 @@ An advanced automation plugin for the reforging bench mechanic in Path of Exile 
 
 ## Settings
 
-### Core Settings
-- Enable/Disable plugin
-- Debug logging toggle
-- Hotkey configuration
-- Mouse movement parameters
 
 ### Item Filters
 - Min/Max item level
@@ -55,28 +45,3 @@ An advanced automation plugin for the reforging bench mechanic in Path of Exile 
   - Rings
   - Amulets
   - Waystones
-
-## Requirements
-
-- ExileCore2
-- .NET Framework (compatible version)
-- Path of Exile 2 game client
-
-## Development
-
-The plugin is built with a modular architecture:
-- `ReforgeHelper.cs`: Core plugin logic and UI interaction
-- `TripletManager`: Smart item grouping and validation
-- `ReforgeBenchHelper`: Bench element detection
-- `ItemSubtypes`: Item categorization and validation
-
-## Safety Features
-
-- Human-like mouse movements
-- Randomized delays between actions
-- Automatic validation of bench and inventory state
-- Process monitoring and safe interruption
-
-## License
-
-Licensed under the MIT License
