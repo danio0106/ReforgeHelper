@@ -292,6 +292,29 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         try
         {
             if (_currentTripletIndex >= _currentTriplets.Count) return;
+            
+            // Make sure bench is still available during processing
+            if (IsReforgeBenchUiOpen())
+            {
+                // Refresh bench reference if needed
+                if (_lastFoundBench == null || !_lastFoundBench.IsVisible)
+                {
+                    CheckReforgeBench();
+                    
+                    if (_lastFoundBench == null || !_lastFoundBench.IsVisible)
+                    {
+                        LogDebug("Lost reference to reforge bench during processing");
+                        StopProcessing();
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                LogDebug("Reforge bench UI closed during processing");
+                StopProcessing();
+                return;
+            }
 
             var triplet = _currentTriplets[_currentTripletIndex];
             LogDebug($"Processing triplet {_currentTripletIndex + 1}/{_currentTriplets.Count}");
@@ -441,6 +464,13 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             RFLogger.Debug("Already processing, skipping");
             return;
         }
+        
+        // Ensure bench is still valid
+        if (_lastFoundBench == null || !_lastFoundBench.IsVisible)
+        {
+            LogDebug("Reforge bench no longer available");
+            return;
+        }
 
         _currentTriplets = _tripletManager.FormTriplets();
         if (_currentTriplets.Count == 0)
@@ -484,29 +514,33 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 return;
             }
 
-            // Only check bench when UI is open
-            if (IsReforgeBenchUiOpen())
-            {
-                if (_lastFoundBench == null)
-                {
-                    CheckReforgeBench();
-                }
-            }
-            else
-            {
-                _lastFoundBench = null;
-            }
+            // We'll check for the bench only when processing or when hotkey is pressed
+            // No continuous bench checking on every tick
 
             // Process hotkeys
             if (Settings.StartReforgeKey.PressedOnce())
             {
                 if (!_isProcessing)
                 {
+                // Only check for bench when hotkey is pressed and not already processing
+                if (IsReforgeBenchUiOpen())
+                {
+                    CheckReforgeBench();
+                        
                     if (_lastFoundBench?.IsVisible == true)
                     {
                         StartProcessing();
                     }
+                    else
+                    {
+                        LogDebug("Reforge bench not found or not visible. Please open the reforge bench.");
+                    }
                 }
+                else
+                {
+                    LogDebug("Reforge bench UI is not open. Please open the reforge bench first.");
+                }
+            }
                 else
                 {
                     StopProcessing();
