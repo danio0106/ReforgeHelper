@@ -399,8 +399,21 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             }
             else
             {
-                _isProcessing = false;
-                LogDebug("Finished processing all triplets.");
+                // All initially queued triplets processed – rescan inventory
+                await Task.Delay(200, ct);
+                var newTriplets = _tripletManager.FormTriplets();
+                if (newTriplets.Count > 0)
+                {
+                    _currentTriplets = newTriplets;
+                    _currentTripletIndex = 0;
+                    LogDebug($"Found {newTriplets.Count} new triplets");
+                    _ = ProcessNextTriplet(ct);
+                }
+                else
+                {
+                    _isProcessing = false;
+                    LogDebug("Finished processing all triplets.");
+                }
             }
         }
         catch (Exception ex)
@@ -481,20 +494,33 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         }
     }
 
+    private bool BenchSlotHasItem(Element slot)
+    {
+        if (slot?.IsVisible != true)
+            return false;
+
+        // A slot with an item will have a child element with either text (stack size)
+        // or its own children (the item element). Empty slots typically have only
+        // placeholder children without text and no further descendants.
+        return slot.Children.Any(c => c.Children.Count > 0 || !string.IsNullOrEmpty(c.Text));
+    }
+
     private int GetBenchTotalItemCount()
     {
         int total = 0;
         foreach (var slot in _itemSlots)
         {
-            if (slot?.IsVisible == true && slot.Children.Count > 0)
-            {
-                var stackElement = slot.Children.SelectMany(c => c.Children)
-                    .FirstOrDefault(c => !string.IsNullOrEmpty(c.Text));
-                if (stackElement != null && int.TryParse(stackElement.Text, out int stackSize))
-                    total += stackSize;
-                else
-                    total += 1;
-            }
+            if (!BenchSlotHasItem(slot))
+                continue;
+
+            var stackElement = slot.Children
+                .SelectMany(c => c.Children)
+                .FirstOrDefault(c => !string.IsNullOrEmpty(c.Text));
+
+            if (stackElement != null && int.TryParse(stackElement.Text, out int stackSize))
+                total += stackSize;
+            else
+                total += 1;
         }
         return total;
     }
@@ -503,16 +529,16 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
     {
         foreach (var slot in _itemSlots)
         {
-            if (slot?.IsVisible == true && slot.Children.Count > 0)
-            {
-                var rect = slot.GetClientRect();
-                await MoveCursorSmoothly(rect.Center, ct);
-                Input.KeyDown(Keys.ControlKey);
-                await Task.Delay(50, ct);
-                Input.Click(MouseButtons.Left);
-                await Task.Delay(100, ct);
-                Input.KeyUp(Keys.ControlKey);
-            }
+            if (!BenchSlotHasItem(slot))
+                continue;
+
+            var rect = slot.GetClientRect();
+            await MoveCursorSmoothly(rect.Center, ct);
+            Input.KeyDown(Keys.ControlKey);
+            await Task.Delay(50, ct);
+            Input.Click(MouseButtons.Left);
+            await Task.Delay(100, ct);
+            Input.KeyUp(Keys.ControlKey);
         }
     }
 
