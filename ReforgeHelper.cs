@@ -495,6 +495,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
     }
 
     private bool BenchSlotHasItem(Element slot)
+
     {
         if (slot?.IsVisible != true)
             return false;
@@ -518,6 +519,35 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             return stackSize;
 
         return 1;
+=======
+    {
+        if (slot?.IsVisible != true)
+            return false;
+
+        // A slot with an item will have a child element with either text (stack size)
+        // or its own children (the item element). Empty slots typically have only
+        // placeholder children without text and no further descendants.
+        return slot.Children.Any(c => c.Children.Count > 0 || !string.IsNullOrEmpty(c.Text));
+    }
+
+    private int GetBenchTotalItemCount()
+    {
+        int total = 0;
+        foreach (var slot in _itemSlots)
+        {
+            if (!BenchSlotHasItem(slot))
+                continue;
+
+            var stackElement = slot.Children
+                .SelectMany(c => c.Children)
+                .FirstOrDefault(c => !string.IsNullOrEmpty(c.Text));
+
+            if (stackElement != null && int.TryParse(stackElement.Text, out int stackSize))
+                total += stackSize;
+            else
+                total += 1;
+        }
+        return total;
     }
 
     private async Task ClearBench(CancellationToken ct)
