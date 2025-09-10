@@ -64,6 +64,14 @@ namespace ReforgeHelper
                 "Breach Precursor Tablet", "Expedition Precursor Tablet",
                 "Delirium Precursor Tablet", "Ritual Precursor Tablet",
                 "Precursor Tablet", "Overseer Precursor Tablet"
+            },
+
+            // Emotions
+            ["Liquid Emotions"] = new List<string>
+            {
+                "Diluted Liquid Ire", "Diluted Liquid Guilt",
+                "Diluted Liquid Greed", "Liquid Paranoia",
+                "Liquid Envy", "Liquid Disgust"
             }
         };
 
@@ -85,7 +93,7 @@ namespace ReforgeHelper
         {
             foreach (var category in SubtypeCategories)
             {
-                if (category.Value.Any(subtype => 
+                if (category.Value.Any(subtype =>
                     itemName.Contains(subtype, StringComparison.OrdinalIgnoreCase)))
                 {
                     return category.Key;
