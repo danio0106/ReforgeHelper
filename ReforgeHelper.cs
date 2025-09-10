@@ -363,7 +363,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
                     await MoveResultItem(ct);
 
-                    if (GetBenchSlotItemCount(_itemSlots[2]) < 3)
+                    if (GetBenchTotalItemCount() < 3)
                         break;
                 }
 
@@ -495,31 +495,6 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
     }
 
     private bool BenchSlotHasItem(Element slot)
-
-    {
-        if (slot?.IsVisible != true)
-            return false;
-
-        // A slot with an item will have a child element with either text (stack size)
-        // or its own children (the item element). Empty slots typically have only
-        // placeholder children without text and no further descendants.
-        return slot.Children.Any(c => c.Children.Count > 0 || !string.IsNullOrEmpty(c.Text));
-    }
-
-    private int GetBenchSlotItemCount(Element slot)
-    {
-        if (!BenchSlotHasItem(slot))
-            return 0;
-
-        var stackElement = slot.Children
-            .SelectMany(c => c.Children)
-            .FirstOrDefault(c => !string.IsNullOrEmpty(c.Text));
-
-        if (stackElement != null && int.TryParse(stackElement.Text, out int stackSize))
-            return stackSize;
-
-        return 1;
-=======
     {
         if (slot?.IsVisible != true)
             return false;
