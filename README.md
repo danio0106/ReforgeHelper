@@ -5,6 +5,7 @@ Groups compatible items based on base type, rarity, and item level
 Configurable item level disparity threshold
 Automatic rarity validation per item type
 Support for multiple item categories
+Automatically refills the bench and rescans inventory to craft newly created items
 
 Supported Item Types
 Soul Cores
