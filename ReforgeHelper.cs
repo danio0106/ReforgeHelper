@@ -363,7 +363,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
                     await MoveResultItem(ct);
 
-                    if (GetBenchSlotItemCount(_itemSlots[2]) < 3)
+                    if (_itemSlots.Any(slot => GetBenchSlotItemCount(slot) < 3))
                         break;
                 }
 
@@ -677,13 +677,15 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         public int ItemLevel { get; }
         public ItemRarity Rarity { get; }
         public ExileCore2.Shared.RectangleF ClientRect { get; }
+        public int StackSize { get; set; }
         private readonly GameController _gc;
 
-        public TripletData(Entity entity, GameController gc, ExileCore2.Shared.RectangleF rect)
+        public TripletData(Entity entity, GameController gc, ExileCore2.Shared.RectangleF rect, int stackSize = 1)
         {
             Entity = entity;
             _gc = gc;
             ClientRect = rect;
+            StackSize = stackSize;
 
             var baseComponent = entity.GetComponent<Base>();
             var modsComponent = entity.GetComponent<Mods>();
@@ -761,12 +763,14 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
                 var baseComp = item.Item.GetComponent<Base>();
                 var modsComp = item.Item.GetComponent<Mods>();
+                var stackComp = item.Item.GetComponent<Stack>();
+                var stackSize = stackComp?.StackSize ?? 1;
 
                 RFLogger.Debug(
-                    $"Item: {baseComp?.Name} | Level: {modsComp?.ItemLevel} | Rarity: {modsComp?.ItemRarity}"
+                    $"Item: {baseComp?.Name} | Stack: {stackSize} | Level: {modsComp?.ItemLevel} | Rarity: {modsComp?.ItemRarity}"
                 );
 
-                items.Add(new TripletData(item.Item, _gameController, item.GetClientRect()));
+                items.Add(new TripletData(item.Item, _gameController, item.GetClientRect(), stackSize));
             }
 
             return items;
@@ -871,8 +875,8 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             {
                 var emotionItems = _inventoryItems.Value
                     .Where(item => ItemSubtypes.GetBaseCategory(item.BaseType) == "Liquid Emotions")
-                    .GroupBy(item => item.BaseType)
-                    .Where(group => group.Count() >= 3);
+                    .Where(item => item.StackSize >= 3)
+                    .GroupBy(item => item.BaseType);
 
                 foreach (var group in emotionItems)
                 {
@@ -880,7 +884,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                     while (sorted.Count >= 3)
                     {
                         var triplet = sorted.Take(3)
-                            .Select(item => new TripletData(item.Entity, _gameController, item.ClientRect))
+                            .Select(item => new TripletData(item.Entity, _gameController, item.ClientRect, item.StackSize))
                             .ToList();
                         sorted.RemoveRange(0, 3);
                         triplets.Add(triplet);
@@ -907,7 +911,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 while (sortedItems.Count >= 3)
                 {
                     var triplet = sortedItems.Take(3)
-                        .Select(item => new TripletData(item.Entity, _gameController, item.ClientRect))
+                        .Select(item => new TripletData(item.Entity, _gameController, item.ClientRect, item.StackSize))
                         .ToList();
                     sortedItems.RemoveRange(0, 3);
                     triplets.Add(triplet);
