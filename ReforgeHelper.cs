@@ -363,7 +363,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
                     await MoveResultItem(ct);
 
-                    if (GetBenchTotalItemCount() < 3)
+                    if (GetBenchSlotItemCount(_itemSlots[2]) < 3)
                         break;
                 }
 
@@ -505,24 +505,19 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         return slot.Children.Any(c => c.Children.Count > 0 || !string.IsNullOrEmpty(c.Text));
     }
 
-    private int GetBenchTotalItemCount()
+    private int GetBenchSlotItemCount(Element slot)
     {
-        int total = 0;
-        foreach (var slot in _itemSlots)
-        {
-            if (!BenchSlotHasItem(slot))
-                continue;
+        if (!BenchSlotHasItem(slot))
+            return 0;
 
-            var stackElement = slot.Children
-                .SelectMany(c => c.Children)
-                .FirstOrDefault(c => !string.IsNullOrEmpty(c.Text));
+        var stackElement = slot.Children
+            .SelectMany(c => c.Children)
+            .FirstOrDefault(c => !string.IsNullOrEmpty(c.Text));
 
-            if (stackElement != null && int.TryParse(stackElement.Text, out int stackSize))
-                total += stackSize;
-            else
-                total += 1;
-        }
-        return total;
+        if (stackElement != null && int.TryParse(stackElement.Text, out int stackSize))
+            return stackSize;
+
+        return 1;
     }
 
     private async Task ClearBench(CancellationToken ct)
