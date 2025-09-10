@@ -157,6 +157,7 @@ public class ItemProcessor
             "Ring" => _settings.ItemCategories.EnableRings,
             "Amulet" => _settings.ItemCategories.EnableAmulets,
             "Waystone" => _settings.ItemCategories.EnableWaystones,
+            "Liquid Emotions" => _settings.ItemCategories.EnableLiquidEmotions, // ← Add this line
             _ => false
         };
     }
@@ -223,4 +224,5 @@ public class ItemProcessor
         LogMessage($"Formed {triplets.Count} triplets");
         return triplets;
     }
+
 }
