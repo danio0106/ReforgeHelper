@@ -345,25 +345,50 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 LogDebug($"Moved item {i + 1}/{triplet.Count} of triplet to the reforge bench.");
             }
 
-            // Step 2: Press the reforge button
-            var reforgeButton = GetReforgeButton();
-            if (reforgeButton != null)
+            var isLiquid = triplet.Any(x => ItemSubtypes.GetBaseCategory(x.BaseType) == "Liquid Emotions");
+
+            if (isLiquid)
             {
-                LogDebug("Clicking the reforge button...");
-                var reforgeButtonRect = reforgeButton.GetClientRect();
-                await MoveCursorSmoothly(reforgeButtonRect.Center, ct);
-                Input.Click(MouseButtons.Left);
-                await Task.Delay(1000, ct); // Wait for the reforging process to complete
+                while (!ct.IsCancellationRequested)
+                {
+                    var button = GetReforgeButton();
+                    if (button == null)
+                        break;
+
+                    LogDebug("Clicking the reforge button...");
+                    var rect = button.GetClientRect();
+                    await MoveCursorSmoothly(rect.Center, ct);
+                    Input.Click(MouseButtons.Left);
+                    await Task.Delay(1000, ct);
+
+                    await MoveResultItem(ct);
+
+                    if (GetBenchTotalItemCount() < 3)
+                        break;
+                }
+
+                await ClearBench(ct);
             }
             else
             {
-                LogDebug("Reforge button not found or not visible.");
-                StopProcessing();
-                return;
-            }
+                var reforgeButton = GetReforgeButton();
+                if (reforgeButton != null)
+                {
+                    LogDebug("Clicking the reforge button...");
+                    var reforgeButtonRect = reforgeButton.GetClientRect();
+                    await MoveCursorSmoothly(reforgeButtonRect.Center, ct);
+                    Input.Click(MouseButtons.Left);
+                    await Task.Delay(1000, ct); // Wait for the reforging process to complete
+                }
+                else
+                {
+                    LogDebug("Reforge button not found or not visible.");
+                    StopProcessing();
+                    return;
+                }
 
-            // Step 3: Move the result item to the inventory
-            await MoveResultItem(ct);
+                await MoveResultItem(ct);
+            }
 
             // Step 4: Process the next triplet
             _currentTripletIndex++;
@@ -453,6 +478,41 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         else
         {
             RFLogger.Debug("No result item found to move");
+        }
+    }
+
+    private int GetBenchTotalItemCount()
+    {
+        int total = 0;
+        foreach (var slot in _itemSlots)
+        {
+            if (slot?.IsVisible == true && slot.Children.Count > 0)
+            {
+                var stackElement = slot.Children.SelectMany(c => c.Children)
+                    .FirstOrDefault(c => !string.IsNullOrEmpty(c.Text));
+                if (stackElement != null && int.TryParse(stackElement.Text, out int stackSize))
+                    total += stackSize;
+                else
+                    total += 1;
+            }
+        }
+        return total;
+    }
+
+    private async Task ClearBench(CancellationToken ct)
+    {
+        foreach (var slot in _itemSlots)
+        {
+            if (slot?.IsVisible == true && slot.Children.Count > 0)
+            {
+                var rect = slot.GetClientRect();
+                await MoveCursorSmoothly(rect.Center, ct);
+                Input.KeyDown(Keys.ControlKey);
+                await Task.Delay(50, ct);
+                Input.Click(MouseButtons.Left);
+                await Task.Delay(100, ct);
+                Input.KeyUp(Keys.ControlKey);
+            }
         }
     }
 
@@ -784,8 +844,32 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         public List<List<TripletData>> FormTriplets()
         {
             var triplets = new List<List<TripletData>>();
+
+            // Handle Liquid Emotions separately
+            if (_settings.ItemCategories.EnableLiquidEmotions)
+            {
+                var emotionItems = _inventoryItems.Value
+                    .Where(item => ItemSubtypes.GetBaseCategory(item.BaseType) == "Liquid Emotions")
+                    .GroupBy(item => item.BaseType)
+                    .Where(group => group.Count() >= 3);
+
+                foreach (var group in emotionItems)
+                {
+                    var sorted = group.ToList();
+                    while (sorted.Count >= 3)
+                    {
+                        var triplet = sorted.Take(3)
+                            .Select(item => new TripletData(item.Entity, _gameController, item.ClientRect))
+                            .ToList();
+                        sorted.RemoveRange(0, 3);
+                        triplets.Add(triplet);
+                        RFLogger.Debug($"Formed Liquid Emotion triplet: {triplet[0].BaseType}");
+                    }
+                }
+            }
+
             var items = _inventoryItems.Value
-                .Where(IsValidForReforge) // Filter items before grouping
+                .Where(IsValidForReforge)
                 .ToList();
 
             RFLogger.Debug($"Forming triplets from {items.Count} valid items");
@@ -801,8 +885,10 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
                 while (sortedItems.Count >= 3)
                 {
-                    var triplet = sortedItems.Take(3).ToList();
-                    sortedItems.RemoveRange(0, 3); // Remove consumed items
+                    var triplet = sortedItems.Take(3)
+                        .Select(item => new TripletData(item.Entity, _gameController, item.ClientRect))
+                        .ToList();
+                    sortedItems.RemoveRange(0, 3);
                     triplets.Add(triplet);
                 }
             }
