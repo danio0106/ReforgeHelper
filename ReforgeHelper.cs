@@ -328,6 +328,9 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             }
 
             var isLiquid = triplet.Any(x => ItemSubtypes.GetBaseCategory(x.BaseType) == "Liquid Emotions");
+            TripletData firstStack = null;
+            if (isLiquid)
+                firstStack = triplet.FirstOrDefault();
 
             // Step 1: Place items on the bench
             if (!isLiquid)
@@ -352,11 +355,10 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             {
                 // For Liquid Emotions we only move one stack at a time and keep the
                 // remaining stacks in reserve to refill the bench when needed.
-                var firstStack = triplet.FirstOrDefault();
                 if (firstStack != null)
                 {
-                    var rect = firstStack.ClientRect;
-                    await MoveCursorSmoothly(rect.Center, ct);
+                    var firstRect = firstStack.ClientRect;
+                    await MoveCursorSmoothly(firstRect.Center, ct);
                     Input.KeyDown(Keys.ControlKey);
                     await Task.Delay(50, ct);
                     Input.Click(MouseButtons.Left);
@@ -380,8 +382,8 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                             break; // no more items to refill
 
                         var next = triplet[stackIndex++];
-                        var rect = next.ClientRect;
-                        await MoveCursorSmoothly(rect.Center, ct);
+                        var nextRect = next.ClientRect;
+                        await MoveCursorSmoothly(nextRect.Center, ct);
                         Input.KeyDown(Keys.ControlKey);
                         await Task.Delay(50, ct);
                         Input.Click(MouseButtons.Left);
@@ -396,8 +398,8 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                         break;
 
                     LogDebug("Clicking the reforge button...");
-                    var rect = button.GetClientRect();
-                    await MoveCursorSmoothly(rect.Center, ct);
+                    var buttonRect = button.GetClientRect();
+                    await MoveCursorSmoothly(buttonRect.Center, ct);
                     Input.Click(MouseButtons.Left);
                     await Task.Delay(1000, ct);
 
