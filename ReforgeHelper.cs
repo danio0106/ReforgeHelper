@@ -327,30 +327,70 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 return;
             }
 
-            // Step 1: Place the triplet into the reforge bench slots
-            for (int i = 0; i < triplet.Count; i++)
-            {
-                if (ct.IsCancellationRequested) return;
-
-                var rect = triplet[i].ClientRect;
-
-                // Click on the item to move it to the reforge bench
-                await MoveCursorSmoothly(rect.Center, ct);
-                Input.KeyDown(Keys.ControlKey);
-                await Task.Delay(50, ct);
-                Input.Click(MouseButtons.Left);
-                await Task.Delay(100, ct);
-                Input.KeyUp(Keys.ControlKey);
-
-                LogDebug($"Moved item {i + 1}/{triplet.Count} of triplet to the reforge bench.");
-            }
-
             var isLiquid = triplet.Any(x => ItemSubtypes.GetBaseCategory(x.BaseType) == "Liquid Emotions");
+
+            // Step 1: Place items on the bench
+            if (!isLiquid)
+            {
+                for (int i = 0; i < triplet.Count; i++)
+                {
+                    if (ct.IsCancellationRequested) return;
+
+                    var rect = triplet[i].ClientRect;
+
+                    await MoveCursorSmoothly(rect.Center, ct);
+                    Input.KeyDown(Keys.ControlKey);
+                    await Task.Delay(50, ct);
+                    Input.Click(MouseButtons.Left);
+                    await Task.Delay(100, ct);
+                    Input.KeyUp(Keys.ControlKey);
+
+                    LogDebug($"Moved item {i + 1}/{triplet.Count} of triplet to the reforge bench.");
+                }
+            }
+            else
+            {
+                // For Liquid Emotions we only move one stack at a time and keep the
+                // remaining stacks in reserve to refill the bench when needed.
+                var firstStack = triplet.FirstOrDefault();
+                if (firstStack != null)
+                {
+                    var rect = firstStack.ClientRect;
+                    await MoveCursorSmoothly(rect.Center, ct);
+                    Input.KeyDown(Keys.ControlKey);
+                    await Task.Delay(50, ct);
+                    Input.Click(MouseButtons.Left);
+                    await Task.Delay(100, ct);
+                    Input.KeyUp(Keys.ControlKey);
+                }
+            }
 
             if (isLiquid)
             {
-                while (!ct.IsCancellationRequested)
+                // Maintain a running count of items available in bench and inventory
+                int stackIndex = 1; // first stack already moved
+                int benchCount = firstStack?.StackSize ?? 0;
+                int totalRemaining = triplet.Sum(t => t.StackSize);
+
+                while (!ct.IsCancellationRequested && totalRemaining >= 3)
                 {
+                    if (benchCount < 3)
+                    {
+                        if (stackIndex >= triplet.Count)
+                            break; // no more items to refill
+
+                        var next = triplet[stackIndex++];
+                        var rect = next.ClientRect;
+                        await MoveCursorSmoothly(rect.Center, ct);
+                        Input.KeyDown(Keys.ControlKey);
+                        await Task.Delay(50, ct);
+                        Input.Click(MouseButtons.Left);
+                        await Task.Delay(100, ct);
+                        Input.KeyUp(Keys.ControlKey);
+                        benchCount += next.StackSize;
+                        continue;
+                    }
+
                     var button = GetReforgeButton();
                     if (button == null)
                         break;
@@ -363,8 +403,8 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
 
                     await MoveResultItem(ct);
 
-                    if (_itemSlots.Any(slot => GetBenchSlotItemCount(slot) < 3))
-                        break;
+                    benchCount -= 3;
+                    totalRemaining -= 3;
                 }
 
                 await ClearBench(ct);
@@ -499,10 +539,14 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         if (slot?.IsVisible != true)
             return false;
 
-        // A slot with an item will have a child element with either text (stack size)
-        // or its own children (the item element). Empty slots typically have only
-        // placeholder children without text and no further descendants.
-        return slot.Children.Any(c => c.Children.Count > 0 || !string.IsNullOrEmpty(c.Text));
+        bool HasItem(Element e)
+        {
+            if (!string.IsNullOrEmpty(e.Text) || e.Children.Count > 0)
+                return true;
+            return e.Children.Any(HasItem);
+        }
+
+        return slot.Children.Any(HasItem);
     }
 
     private int GetBenchSlotItemCount(Element slot)
@@ -510,10 +554,20 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
         if (!BenchSlotHasItem(slot))
             return 0;
 
-        var stackElement = slot.Children
-            .SelectMany(c => c.Children)
-            .FirstOrDefault(c => !string.IsNullOrEmpty(c.Text));
+        Element FindStack(Element e)
+        {
+            if (!string.IsNullOrEmpty(e.Text))
+                return e;
+            foreach (var child in e.Children)
+            {
+                var found = FindStack(child);
+                if (found != null)
+                    return found;
+            }
+            return null;
+        }
 
+        var stackElement = FindStack(slot);
         if (stackElement != null && int.TryParse(stackElement.Text, out int stackSize))
             return stackSize;
 
@@ -873,28 +927,29 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
             // Handle Liquid Emotions separately
             if (_settings.ItemCategories.EnableLiquidEmotions)
             {
-                var emotionItems = _inventoryItems.Value
+                var emotionGroups = _inventoryItems.Value
                     .Where(item => ItemSubtypes.GetBaseCategory(item.BaseType) == "Liquid Emotions")
-                    .Where(item => item.StackSize >= 3)
                     .GroupBy(item => item.BaseType);
 
-                foreach (var group in emotionItems)
+                foreach (var group in emotionGroups)
                 {
-                    var sorted = group.ToList();
-                    while (sorted.Count >= 3)
-                    {
-                        var triplet = sorted.Take(3)
-                            .Select(item => new TripletData(item.Entity, _gameController, item.ClientRect, item.StackSize))
-                            .ToList();
-                        sorted.RemoveRange(0, 3);
-                        triplets.Add(triplet);
-                        RFLogger.Debug($"Formed Liquid Emotion triplet: {triplet[0].BaseType}");
-                    }
+                    int total = group.Sum(x => x.StackSize);
+                    if (total < 3)
+                        continue;
+
+                    var stacks = group
+                        .OrderByDescending(x => x.StackSize)
+                        .Select(item => new TripletData(item.Entity, _gameController, item.ClientRect, item.StackSize))
+                        .ToList();
+
+                    triplets.Add(stacks);
+                    RFLogger.Debug($"Formed Liquid Emotion group: {group.Key} total:{total}");
                 }
             }
 
             var items = _inventoryItems.Value
                 .Where(IsValidForReforge)
+                .Where(item => ItemSubtypes.GetBaseCategory(item.BaseType) != "Liquid Emotions")
                 .ToList();
 
             RFLogger.Debug($"Forming triplets from {items.Count} valid items");
