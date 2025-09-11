@@ -764,7 +764,7 @@ public class ReforgeHelper : BaseSettingsPlugin<ReforgeHelperSettings>
                 var baseComp = item.Item.GetComponent<Base>();
                 var modsComp = item.Item.GetComponent<Mods>();
                 var stackComp = item.Item.GetComponent<Stack>();
-                var stackSize = stackComp?.StackSize ?? 1;
+                var stackSize = stackComp?.Size ?? 1;
 
                 RFLogger.Debug(
                     $"Item: {baseComp?.Name} | Stack: {stackSize} | Level: {modsComp?.ItemLevel} | Rarity: {modsComp?.ItemRarity}"
